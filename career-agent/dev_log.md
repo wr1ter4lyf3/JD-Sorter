@@ -18,3 +18,9 @@ All job entries were saved with "Unknown Company" even when the filename contain
 - Always test fallbacks *explicitly*
 - Use debug prints to confirm what each logic block actually hits
 - DRY (Don't Repeat Yourself) redundancy tests are important
+- Also learned a lot about Python and LibreOffice!
+  
+| Method | Creates New File? | Keeps Macros? | Best For
+|---|---|---|---|
+| convert-to ods | ✅ Yes (overwrites or duplicates)	 | ❌ No	Simple formatting, no macros |Simple formatting, no macros
+|ezodf direct edit | ❌ No | 	✅ Yes | Updating .ods without breaking anything |
