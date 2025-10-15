@@ -1,0 +1,38 @@
+Sub ColorCodeJobs()
+    Dim oSheet As Object, oCursor As Object, oRange As Object
+    Dim oCell As Object, sText As String
+    Dim nLastRow As Long, i As Long, nCol As Long, nCols As Long
+    Dim oRows As Object, oRowRange As Object
+
+    oSheet = ThisComponent.CurrentController.ActiveSheet
+
+    ' Column F = index 5  (0=A,1=B,2=C,3=D,4=E,5=F)
+    nCol = 5  
+
+    ' Find the last used row in the sheet
+    oCursor = oSheet.createCursor()
+    oCursor.gotoEndOfUsedArea(True)
+    nLastRow = oCursor.RangeAddress.EndRow
+    nCols = oCursor.RangeAddress.EndColumn
+
+    For i = 1 To nLastRow        ' start at 1 to skip header row
+        oCell = oSheet.getCellByPosition(nCol, i)
+        sText = LCase(Trim(oCell.String))
+        
+        ' Select the entire row range (from A to last used column)
+        oRowRange = oSheet.getCellRangeByPosition(0, i, nCols, i)
+        
+        Select Case True
+            Case InStr(sText, "applied") > 0
+                oRowRange.CellBackColor = RGB(255, 255, 153)   ' yellow
+            Case InStr(sText, "interview") > 0
+                oRowRange.CellBackColor = RGB(153, 204, 255)   ' blue
+            Case InStr(sText, "offer") > 0
+                oRowRange.CellBackColor = RGB(153, 255, 153)   ' green
+            Case InStr(sText, "reject") > 0
+                oRowRange.CellBackColor = RGB(255, 204, 204)   ' red
+            Case Else
+                oRowRange.CellBackColor = RGB(255, 255, 255)   ' white / none
+        End Select
+    Next i
+End Sub
