@@ -13,3 +13,40 @@ So the workflow becomes:
 🎨 Macro auto-runs in the .ods to color rows
 
 ✅ Tracker is always up-to-date and formatted
+
+Why won't macros and manual edits saves as .cvs? 
+
+🧠 When You Use CSV → ODS Conversion:
+libreoffice --headless --convert-to ods tracker.csv --outdir ...
+
+⚠️ It does create a new file every time:
+
+LibreOffice converts the .csv into a brand new .ods file
+
+It overwrites the existing .ods if one already exists with the same name
+
+But it does not preserve:
+
+Macros
+
+Custom formatting
+
+Event bindings (like auto-run macros)
+
+Which is why I said earlier:
+
+"If you're using macros or formatting, you can't rely on converting .csv every time — it wipes that stuff."
+
+✅ Now that you’re using .ods directly (with ezodf):
+
+You are no longer converting anything.
+
+You're modifying the .ods file in place
+
+Your macros stay saved in that file
+
+Your color coding remains
+
+Nothing gets overwritten
+
+This is exactly what you want for a fully automated system with formatting + macros.
