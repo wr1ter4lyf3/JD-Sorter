@@ -1,0 +1,15 @@
+✅ GOAL:
+
+Automatically color-code the job tracker spreadsheet (tracker.ods, not .cvs or .xls because macros will not convert) without ever opening LibreOffice manually.
+
+So the workflow becomes:
+
+📄 Drop a .txt job description
+
+🐍 Python sorts and updates the tracker
+
+🤖 LibreOffice converts tracker.csv → tracker.ods
+
+🎨 Macro auto-runs in the .ods to color rows
+
+✅ Tracker is always up-to-date and formatted
