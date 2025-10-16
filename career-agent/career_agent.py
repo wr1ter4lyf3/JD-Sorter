@@ -1,12 +1,22 @@
-# Current Working Script as of 10-15-2025
+# Current Working Script as of 10-16-2025
 import time
 import shutil
 import subprocess
 import re
+import sys
+import datetime
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime as dt
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+import ezodf
+from PyPDF2 import PdfReader
+
+# === LOGGING ===
+log_path = Path.home() / "Documents" / "Career" / "scripts" / "job_sorter.log"
+sys.stdout = open(log_path, "a", encoding="utf-8")
+sys.stderr = sys.stdout
+print(f"\n--- Job Sorter started at {datetime.datetime.now()} ---\n")
 
 # === USER PATHS ===
 BASE_DIR = Path.home() / "Documents" / "Career" / "job-apps"
@@ -23,10 +33,8 @@ def get_role_bucket(text: str) -> str:
     Scores Cyber, Helpdesk, and Network roles based on title + JD text.
     Picks whichever has the highest weighted score.
     """
-
     t = text.lower()
 
-    # keyword groups with weights
     buckets = {
         "Cybersecurity Roles": {
             "keywords": [
@@ -52,26 +60,39 @@ def get_role_bucket(text: str) -> str:
         }
     }
 
-    # initialize scores
     scores = {bucket: 0 for bucket in buckets}
 
-    # count keyword appearances
     for bucket, config in buckets.items():
         for kw in config["keywords"]:
             count = t.count(kw)
             if count:
                 scores[bucket] += count * config["weight"]
 
-    # choose the highest-scoring category
     best_bucket = max(scores, key=scores.get)
-
-    # If no matches at all, fall back to "Other Roles"
     if scores[best_bucket] == 0:
         return "Other Roles"
 
     return best_bucket
 
 
+# ---------- PDF to TXT converter ----------
+def pdf_to_txt(pdf_path: Path) -> Path:
+    """
+    Converts a PDF job description into a text file.
+    """
+    txt_path = pdf_path.with_suffix(".txt")
+    try:
+        reader = PdfReader(str(pdf_path))
+        text = "\n".join(page.extract_text() or "" for page in reader.pages)
+        txt_path.write_text(text, encoding="utf-8")
+        print(f"✅ Converted {pdf_path.name} to {txt_path.name}")
+        return txt_path
+    except Exception as e:
+        print(f"⚠ PDF conversion failed for {pdf_path.name}: {e}")
+        return pdf_path
+
+
+# ---------- folder + tracker logic ----------
 def ensure_dirs(bucket: str, title: str, company: str):
     if not company.strip():
         company = "Unknown Company"
@@ -79,22 +100,20 @@ def ensure_dirs(bucket: str, title: str, company: str):
     bucket_path = BASE_DIR / bucket
     job_folder = bucket_path / f"{title} - {company}"
     subfolders = ["Job-Description", "Resume-Submitted", "Cover-letter-Submitted", "Correspondences", "Offer"]
+
     bucket_path.mkdir(parents=True, exist_ok=True)
     job_folder.mkdir(exist_ok=True)
     for sf in subfolders:
         (job_folder / sf).mkdir(exist_ok=True)
     return job_folder
 
-import ezodf
 
 def update_tracker(bucket: str, title: str, company: str, job_folder: Path):
     tracker_path = BASE_DIR / "tracker.ods"
 
-    # Open the ODS file
     doc = ezodf.opendoc(str(tracker_path))
-    sheet = doc.sheets[0]  # use first sheet
+    sheet = doc.sheets[0]
 
-    # 🧱 Ensure sheet is big enough
     NUM_COLUMNS = 6
     MAX_ROWS = 1000
     current_rows = len(list(sheet.rows()))
@@ -103,42 +122,26 @@ def update_tracker(bucket: str, title: str, company: str, job_folder: Path):
     if current_rows < MAX_ROWS or current_cols < NUM_COLUMNS:
         sheet.reset(size=(MAX_ROWS, NUM_COLUMNS))
 
-    if current_rows < MAX_ROWS or current_cols < NUM_COLUMNS:
-        sheet.reset(size=(MAX_ROWS, NUM_COLUMNS))
-
-    # 🔍 Find the first empty row
     row_index = 0
     for row in sheet.rows():
         if not row[0].value:
             break
         row_index += 1
 
-    # 📋 Prepare new row data
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = dt.now().strftime("%Y-%m-%d")
     values = [today, company, title, bucket, str(job_folder), "new"]
 
-    # ✍️ Write to the row
     for col_index, value in enumerate(values):
         sheet[row_index, col_index].set_value(value)
 
-    # 💾 Save file
     doc.save()
     print(f"✅ Tracker updated in row {row_index + 1}")
 
 
-# ---------- extraction logic ----------
-import re
-from pathlib import Path
-
+# ---------- job info extraction ----------
 def extract_job_info(jd_text: str, fallback_filename: str):
     title, company = "Unknown Role", "Unknown Company"
 
-    # comment out initial parsing for test
-    # lines = jd_text.splitlines()
-    # for line in lines[:15]:
-    #     ...
-
-    # ✅ Only run fallback
     filename = fallback_filename
     parts = filename.split(" - ")
     print(f"🧪 Fallback filename parts: {parts}")
@@ -147,55 +150,13 @@ def extract_job_info(jd_text: str, fallback_filename: str):
         company = sanitize(" - ".join(parts[1:]))
         print(f"🎯 Fallback extracted: {title} | {company}")
 
-    return title, company
-
-
-    # Step 2: Smart guess — lines like "Acme Corp is hiring"
-    if company == "Unknown Company":
-        for line in lines[:30]:
-            match = re.match(r"^([\w\s&\-\(\)]+?)\s+(is\s+looking\s+for|is\s+hiring|seeks|seeking)", line.strip(), re.IGNORECASE)
-            if match:
-                company = sanitize(match.group(1))
-                break
-
-            match = re.match(r"^about\s+(.+?):", line.strip(), re.IGNORECASE)
-            if match:
-                company = sanitize(match.group(1))
-                break
-
-    # Step 3: Final fallback — use filename
-    if title == "Unknown Role" or company == "Unknown Company":
-        filename = Path(fallback_filename).stem  # removes .txt
-        parts = filename.split(" - ")
-        if len(parts) >= 2:
-            title_from_file = sanitize(parts[0])
-            company_from_file = sanitize(" - ".join(parts[1:]))
-
-            if title == "Unknown Role":
-                title = title_from_file
-            if company == "Unknown Company":
-                company = company_from_file
-                
-    # 🧾 Step 4: Final fallback — extract from filename like "Role - Company.txt"
-    filename = fallback_filename  # Don't call .stem again!
-    parts = filename.split(" - ")
-    if len(parts) >= 2:
-        print(f"🧪 Parsed from filename: {parts}")
-        title_from_file = sanitize(parts[0])
-        company_from_file = sanitize(" - ".join(parts[1:]))
-
-        if title == "Unknown Role":
-            title = title_from_file
-        if company == "Unknown Company":
-            company = company_from_file               
-
-    # Final safety
     if not title.strip():
         title = "Unknown Role"
     if not company.strip():
         company = "Unknown Company"
 
     return title, company
+
 
 # ---------- main processor ----------
 def process_jobfile(txt_path: Path):
@@ -204,29 +165,23 @@ def process_jobfile(txt_path: Path):
 
     jd_text = txt_path.read_text(encoding="utf-8", errors="ignore")
 
-    # ✅ Use the new helper to extract title + company
     title, company = extract_job_info(jd_text, txt_path.stem)
 
-    # 🧪 Optional debug print
     print(f"🧾 Extracted Title: {title}")
     print(f"🏢 Extracted Company: {company}")
 
-    # ✅ Classify job and create folder
     bucket = get_role_bucket(f"{title} {jd_text}")
     job_folder = ensure_dirs(bucket, title, company)
 
-    # ✅ Move the file into the new folder
     dest = job_folder / "Job-Description" / txt_path.name
     shutil.move(str(txt_path), dest)
 
-    # ✅ Update the tracker
     update_tracker(bucket, title, company, job_folder)
 
     print(f"📄 Processed: {txt_path.name}")
     print(f"🗂  Moved to: {dest}")
     print(f"🧭  Bucket:  {bucket}\n")
 
-    # ✅ Open the job folder automatically in Explorer
     try:
         subprocess.Popen(["explorer.exe", str(job_folder)])
         print(f"📂 Opened folder: {job_folder}\n")
@@ -241,15 +196,21 @@ class JDHandler(FileSystemEventHandler):
         self.seen = seen
 
     def on_created(self, event):
-        if event.is_directory or not event.src_path.endswith(".txt"):
+        if event.is_directory:
             return
         path = Path(event.src_path)
-        self._maybe_process(path)
+
+        if path.suffix.lower() == ".pdf":
+            print(f"📄 Detected PDF: {path.name} → converting to text...")
+            path = pdf_to_txt(path)
+
+        if path.suffix.lower() == ".txt":
+            self._maybe_process(path)
 
     def _maybe_process(self, path: Path):
         if path in self.seen:
             return
-        time.sleep(1)  # allow file to finish writing
+        time.sleep(1)
         if path.exists():
             process_jobfile(path)
             print(f"🧪 File name stem: {path.stem}")
@@ -262,7 +223,6 @@ def main():
     BASE_DIR.mkdir(parents=True, exist_ok=True)
     seen = set()
 
-    # --- Startup sweep ---
     existing_files = list(INBOX.glob("*.txt"))
     if existing_files:
         print(f"📦 Found {len(existing_files)} existing JD file(s). Processing now...\n")
@@ -272,14 +232,12 @@ def main():
     else:
         print("🟢 No existing JD files found. Waiting for new ones...\n")
 
-    # --- Start watchdog observer ---
     observer = Observer()
     observer.schedule(JDHandler(seen), str(INBOX), recursive=False)
     observer.start()
 
     try:
         while True:
-            # poll every 5s for missed files
             for f in INBOX.glob("*.txt"):
                 if f not in seen:
                     process_jobfile(f)
