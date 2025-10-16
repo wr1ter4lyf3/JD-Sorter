@@ -1,3 +1,4 @@
 watchdog
 ezodf
 pdfminer.six
+PyPDF2
