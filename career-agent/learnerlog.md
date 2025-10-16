@@ -171,4 +171,6 @@ You could even encrypt your log entries at write time and decrypt them when you 
 
 CodeGPT suggested a ton of more stuff but I also still have to actually apply for a jobs (lol) so that's end of log for today. 
 
+UPDATE: Had to do some patching cuz I don't know how to indent. Still didn't see Python.exe in task manager so I had to bring up the code instead of letting PowerShell run it (it's going to do this automatically upon start-up but for now I'm still manually testing it so it may seem like an extra step for now). We were missing another requirement (Py2DF). 
 
+After I got that patched up, we were up and running and I even got to convert my first PDF! Woot Woot!
