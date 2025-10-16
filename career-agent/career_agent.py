@@ -77,19 +77,23 @@ def get_role_bucket(text: str) -> str:
 
 # ---------- PDF to TXT converter ----------
 def pdf_to_txt(pdf_path: Path) -> Path:
-    """
-    Converts a PDF job description into a text file.
-    """
+    from PyPDF2 import PdfReader
     txt_path = pdf_path.with_suffix(".txt")
-    try:
-        reader = PdfReader(str(pdf_path))
-        text = "\n".join(page.extract_text() or "" for page in reader.pages)
-        txt_path.write_text(text, encoding="utf-8")
-        print(f"✅ Converted {pdf_path.name} to {txt_path.name}")
-        return txt_path
-    except Exception as e:
-        print(f"⚠ PDF conversion failed for {pdf_path.name}: {e}")
-        return pdf_path
+
+    for attempt in range(3):  # try up to 3 times
+        try:
+            reader = PdfReader(str(pdf_path))
+            text = "\n".join(page.extract_text() or "" for page in reader.pages)
+            txt_path.write_text(text, encoding="utf-8")
+            print(f"✅ Converted {pdf_path.name} to {txt_path.name}")
+            return txt_path
+        except Exception as e:
+            if attempt < 2:
+                print(f"⏳ Retrying PDF read ({attempt+1}/3)...")
+                time.sleep(1.5)
+            else:
+                print(f"⚠ PDF conversion failed for {pdf_path.name}: {e}")
+                return pdf_path  # fallback
 
 
 # ---------- folder + tracker logic ----------
