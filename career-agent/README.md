@@ -18,22 +18,42 @@ job-apps/
     └── Security Analyst - MegaCorp/
         ├── Job-Description/
         └── ...
-🛠️ Tech Used
+```
 
-watchdog for file monitoring
+## 🧰 System Requirements
 
-ezodf to write .ods spreadsheets
+To run this automation reliably, you’ll need:
 
-LibreOffice macros (for color-coding)
+- **Python 3.11+**
+  - Required libraries are listed in `requirements.txt` (`watchdog`, `PyPDF2`, `ezodf`)
+  - Install them with:
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-Python 3.13+
+- **PowerShell 7+**
+  - The PowerShell script (`career_watcher.ps1`) was written and tested using PowerShell 7.
+  - Older versions (such as Windows PowerShell 5.x) may cause encoding or background-process issues.
+
+- **LibreOffice**
+  - Used to manage and color-code the job tracker (`tracker.ods`).
+  - Not required to run the Python automation, but needed for macro functionality.
+
+---
+
+### 🧱 Optional: Verify PowerShell Version
+
+Run this command in PowerShell:
+```powershell
+$PSVersionTable.PSVersion
+```
 
 🧪 Sample Run
-🧾 Extracted Title: Security Analyst
-🏢 Extracted Company: MegaCorp
-✅ Tracker updated in row 4
-📄 Processed: Security Analyst - MegaCorp.txt
-🧭 Bucket:  Cybersecurity Roles
+🧾 Extracted Title: Security Analyst </br>
+🏢 Extracted Company: MegaCorp </br>
+✅ Tracker updated in row 4 </br>
+📄 Processed: Security Analyst - MegaCorp.txt </br>
+🧭 Bucket:  Cybersecurity Roles </br>
 
 🔄 To Do
 
@@ -42,6 +62,8 @@ Python 3.13+
  Job deduplication logic
 
  Auto-open job description in LibreOffice
+
+ Parse through resume variants and recommend best-fit depending on JD
 
 📜 License
 
