@@ -1,4 +1,4 @@
-# Current Working Script as of 10-16-2025
+# Current Working Script as of 10-18-2025
 import time
 import shutil
 import subprocess
@@ -113,8 +113,17 @@ def ensure_dirs(bucket: str, title: str, company: str):
 
 
 def update_tracker(bucket: str, title: str, company: str, job_folder: Path):
+    import shutil, datetime  # local import keeps function self-contained
     tracker_path = BASE_DIR / "tracker.ods"
 
+    # --- Backup before modifying tracker ---
+    backup_path = tracker_path.with_name(
+        f"tracker_backup_{datetime.date.today().isoformat()}.ods"
+    )
+    shutil.copy(tracker_path, backup_path)
+    print(f"📦 Backup created: {backup_path.name}")
+
+    # --- Open and update tracker ---
     doc = ezodf.opendoc(str(tracker_path))
     sheet = doc.sheets[0]
 
@@ -126,6 +135,7 @@ def update_tracker(bucket: str, title: str, company: str, job_folder: Path):
     if current_rows < MAX_ROWS or current_cols < NUM_COLUMNS:
         sheet.reset(size=(MAX_ROWS, NUM_COLUMNS))
 
+    # Find first empty row
     row_index = 0
     for row in sheet.rows():
         if not row[0].value:
@@ -254,3 +264,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
